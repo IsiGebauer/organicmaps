@@ -656,6 +656,7 @@ string DetermineSurfaceAndHighwayType(OsmElement * p)
     bool const isMed = (smoothness == "intermediate" || trackGrade == "grade2");
     bool const hasTrailTags = p->HasTag("sac_scale") || p->HasTag("trail_visibility") ||
                               p->HasTag("ford") || p->HasTag("informal", "yes");
+    bool const hasMtbScale = p->HasTag("mtb_scale");
     bool const hasUrbanTags = p->HasTag("footway") || p->HasTag("segregated") ||
                               (p->HasTag("lit") && !p->HasTag("lit", "no"));
 
@@ -794,6 +795,7 @@ string DeterminePathGrade(OsmElement * p)
     return {};
 
   string scale = p->GetTag("sac_scale");
+  string mtbscale = p->GetTag("mtb_scale");
   string visibility = p->GetTag("trail_visibility");
 
   if (scale.empty() && visibility.empty())
@@ -817,6 +819,58 @@ string DeterminePathGrade(OsmElement * p)
   // hiking & mountain_hiking scales, excellent, good, intermediate & unknown visibilities means "no grade"
   return {};
 }
+
+string DetermineVisibility(OsmElement * p)
+{
+  if (!p->HasTag("highway", "path"))
+    return {};
+
+  string visibility = p->GetTag("trail_visibility");
+
+  if (visibility.empty())
+    return {};
+
+  static base::StringIL difficultVisibilities = {
+      "bad", "poor" // poor is not official
+  };
+  static base::StringIL expertVisibilities = {
+      "horrible", "no", "very_bad" // very_bad is not official
+  };
+
+  if (base::IsExist(expertVisibilities, visibility))
+    return "expert";
+  else if (base::IsExist(difficultVisibilities, visibility))
+    return "difficult";
+
+  // hiking & mountain_hiking scales, excellent, good, intermediate & unknown visibilities means "no grade"
+  return {};
+}
+/**
+string DetermineMtbScale(OsmElement * p)
+{
+  if (!p->HasTag("highway", "path"))
+    return {};
+
+  string mtbscale = p->GetTag("mtb_scale");
+
+  static base::StringIL expertScales = {
+      "alpine_hiking", "demanding_alpine_hiking", "difficult_alpine_hiking"
+  };
+  static base::StringIL difficultVisibilities = {
+      "bad", "poor" // poor is not official
+  };
+  static base::StringIL expertVisibilities = {
+      "horrible", "no", "very_bad" // very_bad is not official
+  };
+
+  if (base::IsExist(expertScales, scale) || base::IsExist(expertVisibilities, visibility))
+    return "expert";
+  else if (scale == "demanding_mountain_hiking" || base::IsExist(difficultVisibilities, visibility))
+    return "difficult";
+
+  // hiking & mountain_hiking scales, excellent, good, intermediate & unknown visibilities means "no grade"
+  return {};
+}*/
 
 void PreprocessElement(OsmElement * p, CalculateOriginFnT const & calcOrg)
 {
@@ -901,6 +955,8 @@ void PreprocessElement(OsmElement * p, CalculateOriginFnT const & calcOrg)
   p->AddTag("psurface", DetermineSurfaceAndHighwayType(p));
 
   p->AddTag("_path_grade", DeterminePathGrade(p));
+
+  p->AddTag("visibility", DetermineVisibility(p));
 
   string const kCuisineKey = "cuisine";
   auto cuisines = p->GetTag(kCuisineKey);

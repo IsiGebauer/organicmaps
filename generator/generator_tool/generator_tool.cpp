@@ -189,7 +189,16 @@ DEFINE_uint64(threads_count, 0, "Desired count of threads. If count equals zero,
                                 "threads is set automatically.");
 DEFINE_bool(verbose, false, "Provide more detailed output.");
 
-MAIN_WITH_ERROR_HANDLING([](int argc, char ** argv)
+//MAIN_WITH_ERROR_HANDLING([](int argc, char ** argv)
+int main2(int argc, char ** argv);
+int main(int argc, char ** argv)
+{
+  std::signal(SIGABRT, generator::ErrorHandler); 
+  std::signal(SIGSEGV, generator::ErrorHandler); 
+  return main2(argc, argv);
+}
+
+int main2(int argc, char ** argv)
 {
   using namespace generator;
   using std::string;
@@ -630,4 +639,4 @@ MAIN_WITH_ERROR_HANDLING([](int argc, char ** argv)
     check_model::ReadFeatures(dataFile);
 
   return EXIT_SUCCESS;
-})
+}

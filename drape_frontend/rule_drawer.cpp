@@ -322,7 +322,7 @@ void RuleDrawer::ProcessLineStyle(FeatureType & f, Stylist const & s, TInsertSha
   f.ForEachPoint(applyGeom, m_zoomLevel);
 
   if (applyGeom.HasGeometry())
-    applyGeom.ProcessLineRules(s.m_lineRules);
+    applyGeom.ProcessLineRules(s.m_lineRules); // Line Style (dotted etc.) is drawn here
 
   if (s.m_pathtextRule || s.m_shieldRule)
   {
@@ -399,7 +399,7 @@ void RuleDrawer::ProcessPointStyle(FeatureType & f, Stylist const & s, TInsertSh
 }
 
 void RuleDrawer::operator()(FeatureType & f)
-{
+{// drawing happens here?!
   if (CheckCancelled())
     return;
 

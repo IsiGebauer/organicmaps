@@ -80,7 +80,7 @@ void LogMessageDefault(LogLevel level, SrcPoint const & srcPoint, std::string co
 
   std::cerr << out.str();
 
-  CHECK_LESS(level, g_LogAbortLevel, ("Abort. Log level is too serious", level));
+  //CHECK_LESS(level, g_LogAbortLevel, ("Abort. Log level is too serious", level));
 }
 
 void LogMessageTests(LogLevel level, SrcPoint const &, std::string const & msg)

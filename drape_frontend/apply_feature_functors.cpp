@@ -1019,7 +1019,7 @@ void ApplyLineFeatureAdditional::ProcessAdditionalLineRules(PathTextRuleProto co
                                                             ref_ptr<dp::TextureManager> texMng,
                                                             ftypes::RoadShieldsSetT const & roadShields,
                                                             GeneratedRoadShields & generatedRoadShields)
-{
+{ // I think name is printed here
   ASSERT(pathtextRule || shieldRule, ());
 
   auto const vs = static_cast<float>(df::VisualParams::Instance().GetVisualScale());
