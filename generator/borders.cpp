@@ -42,6 +42,7 @@ template <class ToDo>
 void ForEachCountry(std::string const & baseDir, ToDo && toDo)
 {
   std::string const bordersDir = base::JoinPath(baseDir, BORDERS_DIR);
+  // Todo: currently I run into an error here if the border.poly is not manually copied into the 241108 folder
   CHECK(Platform::IsFileExistsByFullPath(bordersDir),
         ("Cannot read borders directory", bordersDir));
 
