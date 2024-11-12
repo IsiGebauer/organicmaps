@@ -1036,6 +1036,8 @@ void ApplyLineFeatureAdditional::ProcessAdditionalLineRules(PathTextRuleProto co
 
   if (pathtextRule)
   {
+    const std::string_view tmp_MtbScore = m_f.GetMetadata(feature::Metadata::FMD_MTBSCALE);
+
     ASSERT(!m_captions.GetMainText().empty(), ());
     m_captionRule = &pathtextRule->primary();
     ASSERT_GREATER_OR_EQUAL(m_captionRule->height(), kMinVisibleFontSize / df::kMaxVisualScale, ());
@@ -1068,6 +1070,21 @@ void ApplyLineFeatureAdditional::ProcessAdditionalLineRules(PathTextRuleProto co
         CalculateRoadShieldPositions(shape->GetOffsets(), spline, shieldPositions);
 
       m_insertShape(std::move(shape));
+
+      if (!tmp_MtbScore.empty())
+      {
+        PathTextViewParams tmp_MtbScaleParam = params;
+        tmp_MtbScaleParam.m_mainText = tmp_MtbScore;
+        tmp_MtbScaleParam.m_auxText = std::string({});
+
+
+        PathTextViewParams p = params;
+        m_insertShape(make_unique_dp<TextShape>(spline, tmp_MtbScaleParam, m_tileKey,
+                                              m2::PointF(0.0f, 0.0f) /* symbolSize */,
+                                              m2::PointF(0.0f, 0.0f) /* symbolOffset */,
+                                              dp::Center /* symbolAnchor */, ++textIndex));
+      }
+
       textIndex++;
     }
   }

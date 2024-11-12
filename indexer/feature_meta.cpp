@@ -154,6 +154,8 @@ bool Metadata::TypeFromString(string_view k, Metadata::EType & outType)
     outType = Metadata::FMD_OUTDOOR_SEATING;
   else if (k == "network")
     outType = Metadata::FMD_NETWORK;
+  else if (k=="mtb_scale")
+    outType = Metadata::FMD_MTBSCALE;
   else
     return false;
 
@@ -277,6 +279,7 @@ string ToString(Metadata::EType type)
   case Metadata::FMD_SELF_SERVICE: return "self_service";
   case Metadata::FMD_OUTDOOR_SEATING: return "outdoor_seating";
   case Metadata::FMD_NETWORK: return "network";
+  case Metadata::FMD_MTBSCALE: return "mtb_scale";
   case Metadata::FMD_COUNT: CHECK(false, ("FMD_COUNT can not be used as a type."));
   };
 

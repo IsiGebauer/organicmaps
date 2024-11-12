@@ -155,6 +155,9 @@ public:
     FMD_SELF_SERVICE = 47,
     FMD_OUTDOOR_SEATING = 48,
     FMD_NETWORK = 49,
+    // it's rare to that a path has a dedicated mtb:scale in its properties. 
+    // Thus this tag is also stored in the metadata instead of a dedicated section
+    FMD_MTBSCALE = 50,
     FMD_COUNT
   };
 
