@@ -1079,10 +1079,10 @@ void ApplyLineFeatureAdditional::ProcessAdditionalLineRules(PathTextRuleProto co
 
 
         PathTextViewParams p = params;
-        m_insertShape(make_unique_dp<TextShape>(spline, tmp_MtbScaleParam, m_tileKey,
-                                              m2::PointF(0.0f, 0.0f) /* symbolSize */,
-                                              m2::PointF(0.0f, 0.0f) /* symbolOffset */,
-                                              dp::Center /* symbolAnchor */, ++textIndex));
+        //m_insertShape(make_unique_dp<TextShape>(spline, tmp_MtbScaleParam, m_tileKey,
+        //                                      m2::PointF(0.0f, 0.0f) /* symbolSize */,
+        //                                      m2::PointF(0.0f, 0.0f) /* symbolOffset */,
+        //                                      dp::Center /* symbolAnchor */, ++textIndex));
       }
 
       textIndex++;
