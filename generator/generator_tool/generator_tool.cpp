@@ -75,11 +75,11 @@ DEFINE_bool(emit_coasts, false,
 #define DEBUG_GENERATOR true
 
 #if DEBUG_GENERATOR
-#define Debug_data_path std::string("/home/emanuel/Documents/work/organicmaps/../maps_build/2024_11_08__21_21_43/intermediate_data")
-#define Debug_intermediate_data_path std::string("/home/emanuel/Documents/work/organicmaps/../maps_build/2024_11_08__21_21_43/intermediate_data")
-#define Debug_cache_path std::string("/home/emanuel/Documents/work/organicmaps/../maps_build/2024_11_08__21_21_43/intermediate_data")
+#define Debug_data_path std::string("/home/emanuel/Documents/work/organicmaps/../maps_build/2024_12_09__15_14_26/intermediate_data")
+#define Debug_intermediate_data_path std::string("/home/emanuel/Documents/work/organicmaps/../maps_build/2024_12_09__15_14_26/intermediate_data")
+#define Debug_cache_path std::string("/home/emanuel/Documents/work/organicmaps/../maps_build/2024_12_09__15_14_26/intermediate_data")
 #define Debug_osm_file_type std::string("o5m") 
-#define Debug_osm_file_name std::string("/home/emanuel/Documents/work/organicmaps/../maps_build/2024_11_08__21_21_43/planet.o5m")
+#define Debug_osm_file_name std::string("/home/emanuel/Documents/work/organicmaps/../maps_build/2024_12_09__15_14_26/planet.o5m")
 #define Debug_node_storage std::string("map")
 #define Debug_user_resource_path std::string("/home/emanuel/Documents/work/organicmaps/data") 
 #define Debug_dump_cities_boundaries true 
@@ -88,6 +88,7 @@ DEFINE_bool(emit_coasts, false,
 #define Debug_isolines_path "" 
 #define Debug_addresses_path "" 
 #define Debug_generate_packed_borders true 
+#define Debug_Preprocess true
 #else
 #define Debug_data_path ""
 #define Debug_intermediate_data_path ""
@@ -102,6 +103,7 @@ DEFINE_bool(emit_coasts, false,
 #define Debug_isolines_path "" 
 #define Debug_addresses_path "" 
 #define Debug_generate_packed_borders false 
+#define Debug_Preprocess false
 #endif
 // Generator settings and paths.
 DEFINE_string(osm_file_name, Debug_osm_file_name, "Input osm area file.");
@@ -120,7 +122,7 @@ DEFINE_uint64(planet_version, base::SecondsSinceEpoch(),
               "Version as seconds since epoch, by default - now.");
 
 // Preprocessing and feature generator.
-DEFINE_bool(preprocess, false, "1st pass - create nodes/ways/relations data.");
+DEFINE_bool(preprocess, Debug_Preprocess, "1st pass - create nodes/ways/relations data.");
 DEFINE_bool(generate_features, Debug_generate_features, "2nd pass - generate intermediate features.");
 DEFINE_bool(generate_geometry, false,
             "3rd pass - split and simplify geometry and triangles for features.");

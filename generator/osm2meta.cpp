@@ -371,15 +371,22 @@ std::string MetadataTagProcessorImpl::ValidateAndFormat_outdoor_seating(std::str
 
 std::string MetadataTagProcessorImpl::ValidateAndFormat_mtb_scale(std::string v)
 {
-  int difficulty = std::stoi(v);
+  strings::AsciiToLower(v);
+  if (v.starts_with("s") && v.size() > 1)
+    v = v.substr(1, v.size()-1);
+  int difficulty = -1;
+  if (v.size() > 0 && isdigit(v[0]))
+  {
+    difficulty = std::stoi(v);
+  }
   // mtb:score must be in between 0 (easiest)- 5 (hardest)
   if (difficulty < 0 )
   {
-    difficulty = 0;
+    return {};
   }
   else if (difficulty > 5)
   {
-    difficulty = 5;
+    return {};
   }
   return std::string("S").append(std::to_string(difficulty));
 }
