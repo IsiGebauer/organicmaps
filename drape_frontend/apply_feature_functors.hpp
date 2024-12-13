@@ -188,6 +188,9 @@ private:
                                 ColoredSymbolViewParams & symbolParams,
                                 PoiSymbolViewParams & poiParams,
                                 m2::PointD & shieldPixelSize);
+
+  void GetMtbScaleParams(TextViewParams & arg_Params, const std::string_view & arg_MtbScore);
+
   bool CheckShieldsNearby(m2::PointD const & shieldPos,
                           m2::PointD const & shieldPixelSize,
                           uint32_t minDistanceInPixels,

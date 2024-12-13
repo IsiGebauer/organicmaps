@@ -63,6 +63,11 @@ void CaptionDescription::Init(FeatureType & f, int8_t deviceLang, int zoomLevel,
   m_mainText = out.GetPrimary();
   ASSERT(m_auxText.empty() || !m_mainText.empty(), ("auxText without mainText"));
 
+  if (geomType == feature::GeomType::Line)
+  {
+    m_difficulty = f.GetDifficulty(deviceLang);
+  }
+
   uint8_t constexpr kLongCaptionsMaxZoom = 4;
   size_t constexpr kLowWorldMaxTextSize = 50;
   if (zoomLevel <= kLongCaptionsMaxZoom && m_mainText.size() > kLowWorldMaxTextSize)
@@ -254,7 +259,7 @@ Stylist::Stylist(FeatureType & f, uint8_t zoomLevel, int8_t deviceLang)
       }
     }
 
-    if (!m_captionDescriptor.IsNameExists())
+    if (!m_captionDescriptor.IsNameExists() && !m_captionDescriptor.IsDifficultyExists())
     {
       m_captionRule = nullptr;
       m_pathtextRule = nullptr;

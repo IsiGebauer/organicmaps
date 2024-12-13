@@ -8,7 +8,8 @@ line|z13-[highway=footway],
 line|z13-[highway=steps],
 line|z13-[highway=bridleway],
 line|z13-[highway=cycleway],
-{text: name; font-size: 10; text-color: @label_light; text-halo-opacity: 0.8; text-halo-radius: 1; text-halo-color: @label_halo_medium;}
+{text: name; font-size: 10; text-color: @label_light; text-halo-opacity: 0.8; text-halo-radius: 1; text-halo-color: @label_halo_medium;
+subtext: mtb_score; subtext-font-size: 10; subtext-color: @label_light; subtext-halo-opacity: 0.8; subtext-halo-radius: 1; subtext-halo-color: @label_halo_medium}
 
 /* Don't display names of sidewalks and pedestrian crossings. */
 line|z13-[highway=footway][footway=sidewalk],

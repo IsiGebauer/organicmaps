@@ -38,11 +38,13 @@ struct CaptionDescription
 
   bool IsNameExists() const { return !m_mainText.empty(); }
   bool IsHouseNumberExists() const { return !m_houseNumberText.empty(); }
-
+  bool IsDifficultyExists() const {return !m_difficulty.empty();}
 private:
   std::string m_mainText;
   std::string m_auxText;
   std::string m_houseNumberText;
+  std::string m_difficulty;
+
 };
 
 class Stylist
@@ -52,6 +54,8 @@ public:
   CaptionRuleProto const * m_captionRule = nullptr;
   CaptionRuleProto const * m_houseNumberRule = nullptr;
   PathTextRuleProto const * m_pathtextRule = nullptr;
+  PathDifficultyRuleProto const * m_pathdifficultyRule = nullptr;
+  //Todo: add Path difficulty rule
   ShieldRuleProto const * m_shieldRule = nullptr;
   AreaRuleProto const * m_areaRule = nullptr;
   AreaRuleProto const * m_hatchingRule = nullptr;

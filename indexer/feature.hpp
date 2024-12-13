@@ -191,6 +191,9 @@ public:
   GeomStat GetOuterTrianglesStats();
   //@}
 
+  //
+  std::string_view GetDifficulty(int8_t lang);
+
 private:
   struct ParsedFlags
   {

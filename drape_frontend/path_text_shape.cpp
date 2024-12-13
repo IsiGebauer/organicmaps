@@ -161,6 +161,12 @@ void PathTextShape::Draw(ref_ptr<dp::GraphicsContext> context, ref_ptr<dp::Batch
   if (m_context->GetLayout() == nullptr || m_context->GetOffsets().empty())
     return;
 
+  volatile int a = 2;
+  if (m_params.m_mainText.compare("S3") == 0)
+  {
+    a = 1;
+  }
+
   if (m_params.m_textFont.m_outlineColor == dp::Color::Transparent())
     DrawPathTextPlain(context, textures, batcher);
   else

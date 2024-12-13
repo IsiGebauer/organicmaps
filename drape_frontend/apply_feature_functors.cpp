@@ -340,6 +340,18 @@ void CalculateRoadShieldPositions(std::vector<double> const & offsets,
     }
   }
 }
+
+void CalculateMtbScalePositions(m2::SharedSpline const & spline,
+                                  std::vector<m2::PointD> & positions)
+{
+
+    for (size_t i = 0; i  < spline.Get()->GetPath().size()-1; i++)
+    {
+      m2::PointD  tmp_Point =  (spline.Get()->GetPath().at(i) + spline.Get()->GetPath().at(i+1))/2;
+      positions.push_back(tmp_Point);
+    }
+  
+}
 }  // namespace
 
 BaseApplyFeature::BaseApplyFeature(TileKey const & tileKey, TInsertShapeFn const & insertShape,
@@ -1014,6 +1026,30 @@ bool ApplyLineFeatureAdditional::CheckShieldsNearby(m2::PointD const & shieldPos
   return true;
 }
 
+void ApplyLineFeatureAdditional::GetMtbScaleParams(TextViewParams & arg_Params, const std::string_view & arg_MtbScore)
+{
+
+  double const mainScale = df::VisualParams::Instance().GetVisualScale();
+  auto const anchor = dp::Top;
+
+  dp::FontDecl font;
+  font.m_color = dp::Color::Red();
+  font.m_size = 10;
+
+
+  FillCommonParams(arg_Params);
+  arg_Params.m_depthLayer = DepthLayer::OverlayLayer;
+  arg_Params.m_depthTestEnabled = false;
+  arg_Params.m_depth = m_shieldDepth;
+  arg_Params.m_titleDecl.m_anchor = anchor;
+  arg_Params.m_titleDecl.m_primaryText = arg_MtbScore;
+  arg_Params.m_titleDecl.m_primaryTextFont = font;
+  arg_Params.m_titleDecl.m_primaryOffset = m2::PointF(2,2);
+  arg_Params.m_titleDecl.m_primaryOptional = false;
+  arg_Params.m_titleDecl.m_secondaryOptional = false;
+  arg_Params.m_startOverlayRank = dp::OverlayRank1;
+}
+
 void ApplyLineFeatureAdditional::ProcessAdditionalLineRules(PathTextRuleProto const * pathtextRule,
                                                             ShieldRuleProto const * shieldRule,
                                                             ref_ptr<dp::TextureManager> texMng,
@@ -1038,7 +1074,8 @@ void ApplyLineFeatureAdditional::ProcessAdditionalLineRules(PathTextRuleProto co
   {
     const std::string_view tmp_MtbScore = m_f.GetMetadata(feature::Metadata::FMD_MTBSCALE);
 
-    ASSERT(!m_captions.GetMainText().empty(), ());
+    ASSERT(!m_captions.GetMainText().empty() || !tmp_MtbScore.empty(), ());
+
     m_captionRule = &pathtextRule->primary();
     ASSERT_GREATER_OR_EQUAL(m_captionRule->height(), kMinVisibleFontSize / df::kMaxVisualScale, ());
     m_captionDepth = PriorityToDepth(pathtextRule->priority(), drule::pathtext, 0);
@@ -1054,12 +1091,14 @@ void ApplyLineFeatureAdditional::ProcessAdditionalLineRules(PathTextRuleProto co
     params.m_auxText = m_captions.GetAuxText();
     params.m_textFont = fontDecl;
     params.m_baseGtoPScale = m_currentScaleGtoP;
-
+    
     uint32_t textIndex = kPathTextBaseTextIndex;
     for (auto const & spline : m_clippedSplines)
     {
+
       PathTextViewParams p = params;
       auto shape = make_unique_dp<PathTextShape>(spline, p, m_tileKey, textIndex);
+      
 
       if (!shape->CalculateLayout(texMng))
         continue;
@@ -1069,21 +1108,42 @@ void ApplyLineFeatureAdditional::ProcessAdditionalLineRules(PathTextRuleProto co
       if (m_shieldRule)
         CalculateRoadShieldPositions(shape->GetOffsets(), spline, shieldPositions);
 
-      m_insertShape(std::move(shape));
 
       if (!tmp_MtbScore.empty())
       {
-        PathTextViewParams tmp_MtbScaleParam = params;
+        /*
+        PathTextViewParams tmp_MtbScaleParam;
+        dp::FontDecl font;
+        font.m_color = dp::Color::Red();
+        font.m_size = 10;
+        tmp_MtbScaleParam.m_textFont = font;
+        FillCommonParams(tmp_MtbScaleParam);
+        tmp_MtbScaleParam.m_depthLayer = DepthLayer::OverlayLayer;
+        tmp_MtbScaleParam.m_depthTestEnabled = false;
+        tmp_MtbScaleParam.m_depth = m_captionDepth;
         tmp_MtbScaleParam.m_mainText = tmp_MtbScore;
-        tmp_MtbScaleParam.m_auxText = std::string({});
+        tmp_MtbScaleParam.m_auxText = "";
+        tmp_MtbScaleParam.m_textFont = font;
+        tmp_MtbScaleParam.m_baseGtoPScale = m_currentScaleGtoP;*/
 
+        
+        //m_insertShape(make_unique_dp<PathTextShape>(spline, tmp_MtbScaleParam, m_tileKey, ++textIndex));
+      
+        TextViewParams tmp_MtbScaleParam;
+        GetMtbScaleParams(tmp_MtbScaleParam, tmp_MtbScore);
 
-        PathTextViewParams p = params;
-        //m_insertShape(make_unique_dp<TextShape>(spline, tmp_MtbScaleParam, m_tileKey,
-        //                                      m2::PointF(0.0f, 0.0f) /* symbolSize */,
-        //                                      m2::PointF(0.0f, 0.0f) /* symbolOffset */,
-        //                                      dp::Center /* symbolAnchor */, ++textIndex));
+        std::vector<m2::PointD> mtbScalePositions;
+        CalculateRoadShieldPositions(shape->GetOffsets(), spline, mtbScalePositions); // todo
+        for (auto & point: mtbScalePositions)
+        {
+          m_insertShape(make_unique_dp<TextShape>(point, tmp_MtbScaleParam, m_tileKey,
+                                             m2::PointF(0.0f, 0.0f) /* symbolSize */,
+                                             m2::PointF(0.0f, 0.0f) /* symbolOffset */,
+                                             dp::Top /* symbolAnchor */, ++textIndex));
+        }
+        
       }
+      m_insertShape(std::move(shape));
 
       textIndex++;
     }

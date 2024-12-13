@@ -866,3 +866,9 @@ bool FeatureType::HasMetadata(feature::Metadata::EType type)
   return base::FindIf(m_metaIds, [&type](auto const & v) { return v.first == type; }) !=
          m_metaIds.end();
 }
+
+std::string_view FeatureType::GetDifficulty(int8_t lang)
+{
+  // todo maybe
+  return GetMetadata(feature::Metadata::FMD_MTBSCALE);
+}
