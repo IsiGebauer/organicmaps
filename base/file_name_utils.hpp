@@ -40,7 +40,16 @@ template <typename... Args>
 std::string JoinPath(std::string const & folder, Args &&... args)
 {
   if (folder.empty())
-    return {};
+  {
+    if (sizeof...(args) == 0)
+    {
+      return {};
+    }
+    else
+    {
+      return impl::JoinPath(std::forward<Args>(args)...);
+    }
+  }
 
   return AddSlashIfNeeded(folder) + impl::JoinPath(std::forward<Args>(args)...);
 }
