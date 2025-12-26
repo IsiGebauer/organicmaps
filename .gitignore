@@ -183,6 +183,9 @@ tools/python/routing/etc/*.ini
 # VS Code
 .vscode
 
+#lang
+.cache
+
 # AppStore metadata
 screenshots/
 android/src/google/play/listings/
