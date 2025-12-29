@@ -340,6 +340,17 @@ void CalculateRoadShieldPositions(std::vector<double> const & offsets,
     }
   }
 }
+// TODO (@gebauer): should be properly implemented
+void CalculateMtbScalePositions(m2::SharedSpline const & spline,
+                                  std::vector<m2::PointD> & positions)
+{
+  for (size_t i = 0; i  < spline.Get()->GetPath().size()-1; i++)
+  {
+    m2::PointD  tmp_Point =  (spline.Get()->GetPath().at(i) + spline.Get()->GetPath().at(i+1))/2;
+    positions.push_back(tmp_Point);
+  }
+}
+
 }  // namespace
 
 BaseApplyFeature::BaseApplyFeature(TileKey const & tileKey, TInsertShapeFn const & insertShape,
@@ -1014,6 +1025,29 @@ bool ApplyLineFeatureAdditional::CheckShieldsNearby(m2::PointD const & shieldPos
   return true;
 }
 
+
+
+
+void ApplyLineFeatureAdditional::GetMtbScaleParams(TextViewParams & arg_Params, const std::string_view & arg_MtbScore)
+{
+  auto const anchor = dp::Top;
+  dp::FontDecl font;
+  font.m_color = dp::Color::Red();
+  font.m_size = 10;
+
+  FillCommonParams(arg_Params);
+  arg_Params.m_depthLayer = DepthLayer::OverlayLayer;
+  arg_Params.m_depthTestEnabled = false;
+  arg_Params.m_depth = m_shieldDepth;
+  arg_Params.m_titleDecl.m_anchor = anchor;
+  arg_Params.m_titleDecl.m_primaryText = arg_MtbScore;
+  arg_Params.m_titleDecl.m_primaryTextFont = font;
+  arg_Params.m_titleDecl.m_primaryOffset = m2::PointF(2,2);
+  arg_Params.m_titleDecl.m_primaryOptional = false;
+  arg_Params.m_titleDecl.m_secondaryOptional = false;
+  arg_Params.m_startOverlayRank = dp::OverlayRank1;
+}
+
 void ApplyLineFeatureAdditional::ProcessAdditionalLineRules(PathTextRuleProto const * pathtextRule,
                                                             ShieldRuleProto const * shieldRule,
                                                             ref_ptr<dp::TextureManager> texMng,
@@ -1040,6 +1074,7 @@ void ApplyLineFeatureAdditional::ProcessAdditionalLineRules(PathTextRuleProto co
     m_captionRule = &pathtextRule->primary();
     ASSERT_GREATER_OR_EQUAL(m_captionRule->height(), kMinVisibleFontSize / df::kMaxVisualScale, ());
     m_captionDepth = PriorityToDepth(pathtextRule->priority(), drule::pathtext, 0);
+    const std::string_view tmp_MtbScore = m_f.GetMetadata(feature::Metadata::FMD_MTBSCALE);
 
     dp::FontDecl fontDecl;
     CaptionDefProtoToFontDecl(m_captionRule, fontDecl);
@@ -1067,7 +1102,24 @@ void ApplyLineFeatureAdditional::ProcessAdditionalLineRules(PathTextRuleProto co
       if (m_shieldRule)
         CalculateRoadShieldPositions(shape->GetOffsets(), spline, shieldPositions);
 
+      if (!tmp_MtbScore.empty())
+      {
+        TextViewParams tmp_MtbScaleParam;
+
+        GetMtbScaleParams(tmp_MtbScaleParam, tmp_MtbScore);
+        std::vector<m2::PointD> mtbScalePositions;
+        CalculateRoadShieldPositions(shape->GetOffsets(), spline, mtbScalePositions); // todo
+        for (const auto & point: mtbScalePositions)
+        {
+          m_insertShape(make_unique_dp<TextShape>(point, tmp_MtbScaleParam, m_tileKey,
+                                             m2::PointF(0.0f, 0.0f) /* symbolSize */,
+                                             m2::PointF(0.0f, 0.0f) /* symbolOffset */,
+                                             dp::Top /* symbolAnchor */, ++textIndex));
+        }
+      }
       m_insertShape(std::move(shape));
+
+
       textIndex++;
     }
   }
