@@ -115,6 +115,12 @@ set(SRC
 #  hierarchy_entry.hpp
   holes.cpp
   holes.hpp
+  helper/TagProcessor.cpp
+  helper/TagProcessor.hpp
+  helper/surfaceClassifier.cpp
+  helper/surfaceClassifier.hpp
+  helper/smoothnessClassifier.cpp
+  helper/smoothnessClassifier.hpp
   intermediate_data.cpp
   intermediate_data.hpp
   intermediate_elements.hpp
