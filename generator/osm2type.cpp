@@ -1,5 +1,6 @@
 #include "generator/osm2type.hpp"
 
+#include "generator/helper/TagProcessor.hpp"
 #include "generator/osm2meta.hpp"
 #include "generator/osm_element.hpp"
 #include "generator/osm_element_helpers.hpp"
@@ -28,6 +29,9 @@
 #include <map>
 #include <string>
 #include <vector>
+
+#include "helper/smoothnessClassifier.hpp"
+#include "helper/surfaceClassifier.hpp"
 
 namespace ftype
 {
@@ -144,97 +148,6 @@ public:
 private:
   std::map<string, string> m_names;
   FeatureBuilderParams & m_params;
-};
-
-class TagProcessor
-{
-public:
-  explicit TagProcessor(OsmElement * elem) : m_element(elem) {}
-
-  template <typename Function>
-  struct Rule
-  {
-    char const * m_key;
-    // Wildcard values:
-    // * - take any values
-    // ! - take only negative values
-    // !r  - take only negative values for Routing
-    // ~ - take only positive values
-    // ~r - take only positive values for Routing
-    // Note that the matching logic here is different from the one used in classificator matching,
-    // see ParseMapCSS() and Matches() in generator/utils.cpp.
-    char const * m_value;
-    std::function<Function> m_func;
-  };
-
-  template <typename Function = void()>
-  void ApplyRules(std::initializer_list<Rule<Function>> const & rules) const
-  {
-    for (auto & e : m_element->m_tags)
-    {
-      for (auto const & rule : rules)
-      {
-        if (e.m_key != rule.m_key)
-          continue;
-
-        bool take = false;
-        if (rule.m_value[0] == '*')
-          take = true;
-        else if (strncmp(rule.m_value, "!r", 2) == 0)
-          take = IsNegativeRouting(e.m_value);
-        else if (strncmp(rule.m_value, "~r", 2) == 0)
-          take = IsPositiveRouting(e.m_value);
-        else if (rule.m_value[0] == '!')
-          take = IsNegative(e.m_value);
-        else if (rule.m_value[0] == '~')
-          take = !IsNegative(e.m_value);
-
-        if (take || e.m_value == rule.m_value)
-          Call(rule.m_func, e.m_key, e.m_value);
-      }
-    }
-  }
-
-protected:
-  static void Call(std::function<void()> const & f, string &, string &) { f(); }
-  static void Call(std::function<void(string &, string &)> const & f, string & k, string & v)
-  {
-    f(k, v);
-    k.clear();
-    v.clear();
-  }
-
-private:
-  static bool IsNegative(string const & value)
-  {
-    for (char const * s : {"no", "none", "false"})
-    {
-      if (value == s)
-        return true;
-    }
-    return false;
-  }
-  static bool IsNegativeRouting(string const & value)
-  {
-    for (char const * s : {"use_sidepath", "separate"})
-    {
-      if (value == s)
-        return true;
-    }
-    return IsNegative(value);
-  }
-  static bool IsPositiveRouting(string const & value)
-  {
-    // This values neither positive and neither negative.
-    for (char const * s : {"unknown", "dismount"})
-    {
-      if (value == s)
-        return false;
-    }
-    return !IsNegativeRouting(value);
-  }
-
-  OsmElement * m_element;
 };
 
 class CachedTypes
@@ -568,71 +481,8 @@ string MatchCity(ms::LatLon const & ll)
   return {};
 }
 
-string DetermineSurfaceAndHighwayType(OsmElement * p)
+void SeparateCyclepathPathAndFootpath(OsmElement * p)
 {
-  string surface;
-  string smoothness;
-  double surfaceGrade = 2; // default is "normal"
-  string highway;
-  string trackGrade;
-
-  for (auto const & tag : p->m_tags)
-  {
-    if (tag.m_key == "surface")
-      surface = tag.m_value;
-    else if (tag.m_key == "smoothness")
-      smoothness = tag.m_value;
-    else if (tag.m_key == "surface:grade") // discouraged, 25k usages as of 2024
-      (void)strings::to_double(tag.m_value, surfaceGrade);
-    else if (tag.m_key == "tracktype")
-      trackGrade = tag.m_value;
-    else if (tag.m_key == "highway" && tag.m_value != "ford")
-      highway = tag.m_value;
-    else if (tag.m_key == "4wd_only" && (tag.m_value == "yes" || tag.m_value == "recommended"))
-      return "unpaved_bad";
-  }
-
-  // According to https://wiki.openstreetmap.org/wiki/Key:surface
-  static base::StringIL pavedSurfaces = {
-      "asphalt", "cobblestone", "chipseal", "concrete", "grass_paver", "stone",
-      "metal", "paved", "paving_stones", "sett", "brick", "bricks", "unhewn_cobblestone", "wood"
-  };
-
-  // All not explicitly listed surface types are considered unpaved good, e.g. "compacted", "fine_gravel".
-  static base::StringIL badSurfaces = {
-      "cobblestone", "dirt", "earth", "soil", "grass", "gravel", "ground", "metal", "mud", "rock", "stone", "unpaved",
-      "pebblestone", "sand", "sett", "brick", "bricks", "snow", "stepping_stones", "unhewn_cobblestone",
-      "grass_paver", "wood", "woodchips"
-  };
-
-  static base::StringIL veryBadSurfaces = {
-      "dirt", "earth", "soil", "grass", "ground", "mud", "rock", "sand", "snow",
-      "stepping_stones", "woodchips"
-  };
-
-  // surface=tartan/artificial_turf/clay are not used for highways (but for sport pitches etc).
-
-  static base::StringIL veryBadSmoothness = {
-      "very_bad",       "horrible",        "very_horrible", "impassable",
-      "robust_wheels", "high_clearance", "off_road_wheels", "rough"
-  };
-
-  static base::StringIL midSmoothness = {
-      "unknown", "intermediate"
-  };
-
-  auto const Has = [](base::StringIL const & il, string const & v)
-  {
-    bool res = false;
-    // Also matches compound values like concrete:plates, sand/dirt, etc. if a single part matches.
-    strings::Tokenize(v, ";:/", [&il, &res](std::string_view sv)
-    {
-      if (!res)
-        res = base::IsExist(il, sv);
-    });
-    return res;
-  };
-
   /* Convert between highway=path/footway/cycleway depending on surface and other tags.
    * The goal is to end up with following clear types:
    *   footway - for paved/formed urban looking pedestrian paths
@@ -642,16 +492,18 @@ string DetermineSurfaceAndHighwayType(OsmElement * p)
    *   cycleway - dedicated for cyclists (segregated from pedestrians)
    * I.e. segregated shared paths should have both footway and cycleway types.
    */
+  string highway = p->GetTag("highway"); // TODO (@gebauer): a single for loop is more efficient actually
+  string smoothness = p->GetTag("smoothness");
+  string trackGrade = p->GetTag("trackGrade");
+  string surface = p->GetTag("surface");
   string const kCycleway = "cycleway";
   string const kFootway = "footway";
   string const kPath = "path";
   if (highway == kFootway || highway == kPath || highway == kCycleway)
   {
-    static base::StringIL goodPathSmoothness = {
-        "excellent", "good", "very_good", "intermediate"
-    };
+    // TODO (@gebauer): this should be cleaned up
     bool const hasQuality = !smoothness.empty() || !trackGrade.empty();
-    bool const isGood = (smoothness.empty() || Has(goodPathSmoothness, smoothness)) &&
+    bool const isGood = (smoothness.empty() || smoothnessClassifier::hasGoodPathSmoothness(smoothness)) &&
                         (trackGrade.empty() || trackGrade == "grade1" || trackGrade == "grade2");
     bool const isMed = (smoothness == "intermediate" || trackGrade == "grade2");
     bool const hasTrailTags = p->HasTag("sac_scale") || p->HasTag("trail_visibility") ||
@@ -659,7 +511,7 @@ string DetermineSurfaceAndHighwayType(OsmElement * p)
     bool const hasUrbanTags = p->HasTag("footway") || p->HasTag("segregated") ||
                               (p->HasTag("lit") && !p->HasTag("lit", "no"));
 
-    bool isFormed = !surface.empty() && Has(pavedSurfaces, surface);
+    bool isFormed = !surface.empty() && surfaceClassifier::isPaved(surface);
     // Treat "compacted" and "fine_gravel" as formed when in good or default quality.
     if ((surface == "compacted" || surface == "fine_gravel") && isGood)
       isFormed = true;
@@ -699,7 +551,7 @@ string DetermineSurfaceAndHighwayType(OsmElement * p)
       static base::StringIL segregatedSidewalks = {
           "right", "left", "both"
       };
-      if (p->HasTag("segregated", "yes") || Has(segregatedSidewalks, p->GetTag("sidewalk")))
+      if (p->HasTag("segregated", "yes") || base::ListContains(segregatedSidewalks, p->GetTag("sidewalk"), true, ";:/"))
       {
         LOG(LDEBUG, ("Add a separate footway to", DebugPrintID(*p), p->m_tags));
         p->AddTag("highway", kFootway);
@@ -735,8 +587,33 @@ string DetermineSurfaceAndHighwayType(OsmElement * p)
       ConvertPathOrFootway(true /* toPath */);
     }
   }
+}
 
-  if (highway.empty() || (surface.empty() && smoothness.empty()))
+string DetermineSurfaceAndHighwayType(OsmElement * p)
+{
+  string surface;
+  string smoothness;
+  double surfaceGrade = 2; // default is "normal"
+  string highway;
+  string trackGrade;
+
+  for (auto const & tag : p->m_tags)
+  {
+    if (tag.m_key == "surface")
+      surface = tag.m_value;
+    else if (tag.m_key == "smoothness")
+      smoothness = tag.m_value;
+    else if (tag.m_key == "surface:grade") // discouraged, 25k usages as of 2024
+      (void)strings::to_double(tag.m_value, surfaceGrade);
+    else if (tag.m_key == "tracktype")
+      trackGrade = tag.m_value;
+    else if (tag.m_key == "highway" && tag.m_value != "ford")
+      highway = tag.m_value;
+    else if (tag.m_key == "4wd_only" && (tag.m_value == "yes" || tag.m_value == "recommended"))
+      return "unpaved_bad";
+  }
+
+  if (highway.empty() || (surface.empty() && smoothness.empty() ))
     return {};
 
   bool isGood = true;
@@ -747,7 +624,7 @@ string DetermineSurfaceAndHighwayType(OsmElement * p)
   {
     CHECK(!smoothness.empty(), ());
     // Extremely bad case.
-    if (Has(veryBadSmoothness, smoothness))
+    if (smoothnessClassifier::hasVeryBadSmoothness(smoothness))
       return "unpaved_bad";
 
     // Tracks already have low speed for cars, but this is mostly for bicycle or pedestrian.
@@ -756,14 +633,14 @@ string DetermineSurfaceAndHighwayType(OsmElement * p)
       isPaved = false;
   }
   else
-    isPaved = Has(pavedSurfaces, surface);
+    isPaved = surfaceClassifier::isPaved(surface);
 
   // Check smoothness.
   if (!smoothness.empty())
   {
     // Middle case has some heuristics.
     /// @todo Actually, should implement separate surface and smoothness types.
-    if (Has(midSmoothness, smoothness))
+    if (smoothnessClassifier::hasMidSmoothness(smoothness))
     {
       if (isPaved)
       {
@@ -773,15 +650,15 @@ string DetermineSurfaceAndHighwayType(OsmElement * p)
           isGood = false;
       }
       else
-        isGood = !Has(badSurfaces, surface);
+        isGood = !surfaceClassifier::isBad(surface);
     }
     else
-      isGood = (smoothness != "bad") && !Has(veryBadSmoothness, smoothness);
+      isGood = (smoothness != "bad") && !smoothnessClassifier::hasVeryBadSmoothness(smoothness);
   }
   else if (surfaceGrade < 2)
     isGood = false;
   else if (!surface.empty() && surfaceGrade < 3)
-    isGood = isPaved ? !Has(badSurfaces, surface) : !Has(veryBadSurfaces, surface);
+    isGood = isPaved ? !surfaceClassifier::isBad(surface) : !surfaceClassifier::isVeryBad(surface);
 
   string psurface = isPaved ? "paved_" : "unpaved_";
   psurface += isGood ? "good" : "bad";
@@ -816,6 +693,81 @@ string DeterminePathGrade(OsmElement * p)
 
   // hiking & mountain_hiking scales, excellent, good, intermediate & unknown visibilities means "no grade"
   return {};
+}
+
+string DetermineMtbRating(OsmElement * p)
+{
+  if ((!p->HasTag("mtb:scale") && !p->HasTag("mtb:scale:imba") && !p->HasTag("smoothness")))
+    return {};
+
+  enum eMtbRating : int
+  {
+    none = 0,
+    easy,
+    intermediate,
+    difficult,
+    expert
+  };
+
+  string mtbscale = p->GetTag("mtb:scale");
+  string imbascale = p->GetTag("mtb:scale:imba");
+  string SmoothnessType = p->GetTag("smoothness");
+
+  static std::map<std::string, eMtbRating> mtbscaleToRatingConversion = {
+    {"0", eMtbRating::easy},
+    {"1", eMtbRating::intermediate},
+    {"2", eMtbRating::intermediate},
+    {"3", eMtbRating::difficult},
+    {"4", eMtbRating::expert},
+    {"5", eMtbRating::expert},
+  };
+
+  static std::map<std::string, eMtbRating> imbabscaleToRatingConversion = {
+    {"1", eMtbRating::easy},
+    {"2", eMtbRating::intermediate},
+    {"3", eMtbRating::difficult},
+    {"4", eMtbRating::expert},
+  };
+
+  static std::map<std::string, eMtbRating> SmoothnessToRatingConversion = {
+    {"bad", eMtbRating::easy},
+    {"very_bad", eMtbRating::easy},
+    {"horrible", eMtbRating::intermediate},
+    {"very_horrible", eMtbRating::difficult},
+  };
+
+  int tmpRatingFromMtbScale = 0;
+  int tmpRatingFromImbaScale = 0;
+  int tmpRatingFromSmoothness = 0;
+  if (!mtbscale.empty() && mtbscaleToRatingConversion.count(mtbscale))
+  {
+    tmpRatingFromMtbScale = mtbscaleToRatingConversion[mtbscale];
+  }
+
+  if (!imbascale.empty() && imbabscaleToRatingConversion.count(imbascale))
+  {
+    tmpRatingFromImbaScale = imbabscaleToRatingConversion[imbascale];
+  }
+
+  if (!SmoothnessType.empty() && SmoothnessToRatingConversion.count(SmoothnessType))
+  {
+    tmpRatingFromSmoothness = SmoothnessToRatingConversion[SmoothnessType];
+  }
+
+  switch (std::max({tmpRatingFromMtbScale, tmpRatingFromImbaScale, tmpRatingFromSmoothness}))
+  {
+    case eMtbRating::easy:
+      return "easy";
+    case eMtbRating::intermediate:
+      return "intermediate";
+    case eMtbRating::difficult:
+      return "difficult";
+    case eMtbRating::expert:
+      return "expert";
+    default:
+      return {};
+  }
+
 }
 
 void PreprocessElement(OsmElement * p, CalculateOriginFnT const & calcOrg)
@@ -897,6 +849,7 @@ void PreprocessElement(OsmElement * p, CalculateOriginFnT const & calcOrg)
   {
     p->AddTag("area", "yes");
   }
+  p->AddTag("_mtb_rating", DetermineMtbRating(p));
 
   p->AddTag("psurface", DetermineSurfaceAndHighwayType(p));
 
