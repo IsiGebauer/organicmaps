@@ -8,7 +8,7 @@
 #include <tuple>
 #include <type_traits>
 #include <vector>
-
+#include "string_utils.hpp"
 namespace base
 {
 using StringIL = std::initializer_list<char const *>;
@@ -496,4 +496,24 @@ struct RetrieveSecond
     return pair.second;
   }
 };
+
+template <typename Cont, typename T>
+bool ListContains(const Cont & arg_List, const  T & arg_Element, bool tokenize=false, const char * delims = nullptr)
+{
+  bool res = false;
+  if (tokenize)
+  {
+    // Also matches compound values like concrete:plates, sand/dirt, etc. if a single part matches.
+    strings::Tokenize(arg_Element, delims, [&arg_List, &res](std::string_view sv)
+    {
+      if (!res)
+        res = base::IsExist(arg_List, sv);
+    });
+  }
+  else
+  {
+    res = base::IsExist(arg_List, arg_Element);
+  }
+  return res;
+}
 }  // namespace base
