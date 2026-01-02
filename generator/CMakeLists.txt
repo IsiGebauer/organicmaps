@@ -121,6 +121,12 @@ set(SRC
   helper/surfaceClassifier.hpp
   helper/smoothnessClassifier.cpp
   helper/smoothnessClassifier.hpp
+  helper/trackGradeClassifier.cpp
+  helper/trackGradeClassifier.hpp
+  helper/highwayClassifier.cpp
+  helper/highwayClassifier.hpp
+  helper/surfaceGradeClassifier.hpp
+  helper/surfaceGradeClassifier.cpp
   intermediate_data.cpp
   intermediate_data.hpp
   intermediate_elements.hpp

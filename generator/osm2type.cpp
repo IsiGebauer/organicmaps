@@ -30,8 +30,11 @@
 #include <string>
 #include <vector>
 
+#include "helper/highwayClassifier.hpp"
 #include "helper/smoothnessClassifier.hpp"
 #include "helper/surfaceClassifier.hpp"
+#include "helper/trackGradeClassifier.hpp"
+#include "helper/surfaceGradeClassifier.hpp"
 
 namespace ftype
 {
@@ -593,7 +596,7 @@ string DetermineSurfaceAndHighwayType(OsmElement * p)
 {
   string surface;
   string smoothness;
-  double surfaceGrade = 2; // default is "normal"
+  int surfaceGrade = 2; // default is "normal"
   string highway;
   string trackGrade;
 
@@ -604,7 +607,7 @@ string DetermineSurfaceAndHighwayType(OsmElement * p)
     else if (tag.m_key == "smoothness")
       smoothness = tag.m_value;
     else if (tag.m_key == "surface:grade") // discouraged, 25k usages as of 2024
-      (void)strings::to_double(tag.m_value, surfaceGrade);
+      (void)strings::to_int32(tag.m_value, surfaceGrade);
     else if (tag.m_key == "tracktype")
       trackGrade = tag.m_value;
     else if (tag.m_key == "highway" && tag.m_value != "ford")
@@ -616,24 +619,33 @@ string DetermineSurfaceAndHighwayType(OsmElement * p)
   if (highway.empty() || (surface.empty() && smoothness.empty() ))
     return {};
 
+  SeparateCyclepathPathAndFootpath(p);
   bool isGood = true;
   bool isPaved = true;
 
-  // Check surface.
+
+
   if (surface.empty())
   {
     CHECK(!smoothness.empty(), ());
-    // Extremely bad case.
     if (smoothnessClassifier::hasVeryBadSmoothness(smoothness))
+    {
       return "unpaved_bad";
-
-    // Tracks already have low speed for cars, but this is mostly for bicycle or pedestrian.
-    // If a track has mapped smoothness, obviously it is unpaved :)
-    if (highway == "track" && trackGrade != "grade1")
+    }
+    if (highwayClassifier::isBadRoad(highway) || !trackGradeClassifier::isPaved(trackGrade))
+    {
       isPaved = false;
+    }
   }
   else
+  {
     isPaved = surfaceClassifier::isPaved(surface);
+  }
+
+  if (!smoothness.empty())
+  {
+
+  }
 
   // Check smoothness.
   if (!smoothness.empty())
@@ -650,15 +662,24 @@ string DetermineSurfaceAndHighwayType(OsmElement * p)
           isGood = false;
       }
       else
+      {
         isGood = !surfaceClassifier::isBad(surface);
+      }
     }
     else
-      isGood = (smoothness != "bad") && !smoothnessClassifier::hasVeryBadSmoothness(smoothness);
+    {
+      isGood = !(smoothnessClassifier::hasBadSmoothness(smoothness) ||
+                 smoothnessClassifier::hasVeryBadSmoothness(smoothness) );
+    }
   }
-  else if (surfaceGrade < 2)
+  else if (surfaceGradeClassifier::hasBadSurfaceGrade(surfaceGrade) || surfaceGradeClassifier::hasVeryBadSurfaceGrade(surfaceGrade))
+  {
     isGood = false;
-  else if (!surface.empty() && surfaceGrade < 3)
+  }
+  else if (!surface.empty() && !surfaceGradeClassifier::hasBadSurfaceGrade(surfaceGrade))
+  {
     isGood = isPaved ? !surfaceClassifier::isBad(surface) : !surfaceClassifier::isVeryBad(surface);
+  }
 
   string psurface = isPaved ? "paved_" : "unpaved_";
   psurface += isGood ? "good" : "bad";

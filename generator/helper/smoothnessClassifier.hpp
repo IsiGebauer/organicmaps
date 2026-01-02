@@ -14,7 +14,10 @@ public:
   static bool hasVeryBadSmoothness(std::string_view arg_Value);
 
   static bool hasGoodPathSmoothness(std::string_view arg_Value);
+
+  static bool hasBadSmoothness(std::string_view arg_Value);
 private:
+  static inline base::StringIL badPathSmoothness = {"bad"};
   static inline base::StringIL veryBadSmoothness = {
     "very_bad",       "horrible",        "very_horrible", "impassable",
     "robust_wheels", "high_clearance", "off_road_wheels", "rough"

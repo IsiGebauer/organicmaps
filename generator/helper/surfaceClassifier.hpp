@@ -15,19 +15,19 @@ public:
   static bool isVeryBad(std::string_view arg_value);
 private:
   // According to https://wiki.openstreetmap.org/wiki/Key:surface
-  static inline base::StringIL pavedSurfaces = {
+  static constexpr base::StringIL pavedSurfaces = {
       "asphalt", "cobblestone", "chipseal", "concrete", "grass_paver", "stone",
       "metal", "paved", "paving_stones", "sett", "brick", "bricks", "unhewn_cobblestone", "wood"
   };
 
     // All not explicitly listed surface types are considered unpaved good, e.g. "compacted", "fine_gravel".
-    static inline base::StringIL badSurfaces = {
+    static constexpr base::StringIL badSurfaces = {
       "cobblestone", "dirt", "earth", "soil", "grass", "gravel", "ground", "metal", "mud", "rock", "stone", "unpaved",
       "pebblestone", "sand", "sett", "brick", "bricks", "snow", "stepping_stones", "unhewn_cobblestone",
       "grass_paver", "wood", "woodchips"
   };
 
-    static inline base::StringIL veryBadSurfaces = {
+    static constexpr base::StringIL veryBadSurfaces = {
       "dirt", "earth", "soil", "grass", "ground", "mud", "rock", "sand", "snow",
       "stepping_stones", "woodchips"
   };

@@ -19,3 +19,8 @@ bool smoothnessClassifier::hasGoodPathSmoothness(std::string_view arg_Value)
 {
   return base::ListContains(goodPathSmoothness, arg_Value, true, delims);
 }
+
+bool smoothnessClassifier::hasBadSmoothness(std::string_view arg_Value)
+{
+  return base::ListContains(badPathSmoothness, arg_Value, true, delims);
+}
